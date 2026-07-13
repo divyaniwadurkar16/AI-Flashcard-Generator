@@ -32,7 +32,7 @@ def load_model():
     return tokenizer, model
 
 
-generator = load_model()
+tokenizer, model = load_model()
 
 
 # Extract important sentences
@@ -78,21 +78,27 @@ def generate_flashcards(text, num_cards):
         {sentence}
         """
 
-        rinputs = tokenizer(
-    prompt,
-    return_tensors="pt",
-    truncation=True
-)
+        inputs = tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True
+        )
 
-outputs = model.generate(
-    **inputs,
-    max_new_tokens=50
-)
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=50
+        )
 
-question = tokenizer.decode(
-    outputs[0],
-    skip_special_tokens=True
-)
+        question = tokenizer.decode(
+            outputs[0],
+            skip_special_tokens=True
+        )
+
+        flashcards.append({
+            "Question": question,
+            "Answer": sentence
+        })
+
     return flashcards
 
 
