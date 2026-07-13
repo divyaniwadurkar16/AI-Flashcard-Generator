@@ -134,25 +134,24 @@ if uploaded_file:
         if page_text:
             text += page_text
 
+    if st.button("Generate Flashcards"):
 
-   if st.button("Generate Flashcards"):
+        with st.spinner("Generating flashcards..."):
 
-    with st.spinner("Generating flashcards..."):
+            cards = generate_flashcards(
+                text,
+                num_cards
+            )
 
-        cards = generate_flashcards(
-            text,
-            num_cards
-        )
+        st.write(cards)   
+        
+        for i, card in enumerate(cards, 1):
 
-    st.write(cards)
+            st.subheader(f"Flashcard {i}")
 
-    for i, card in enumerate(cards, 1):
+            st.write("### Question")
+            st.write(card["Question"])
 
-        st.subheader(f"Flashcard {i}")
-
-        st.write("### Question")
-        st.write(card["Question"])
-
-        st.write("### Answer")
-        st.write(card["Answer"])
+            st.write("### Answer")
+            st.write(card["Answer"])
     
