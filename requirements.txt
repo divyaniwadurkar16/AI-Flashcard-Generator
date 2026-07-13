@@ -1,0 +1,5 @@
+nltk
+PyPDF2
+transformers
+scikit-learn
+numpy
