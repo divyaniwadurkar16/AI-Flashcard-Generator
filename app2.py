@@ -2,7 +2,7 @@ import streamlit as st
 import nltk
 from nltk.tokenize import sent_tokenize
 from PyPDF2 import PdfReader
-from transformers import pipeline
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 
@@ -20,10 +20,16 @@ download_nltk()
 # Load AI model
 @st.cache_resource
 def load_model():
-    return pipeline(
-        "text2text-generation",
-        model="google/flan-t5-base"
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        "google/flan-t5-base"
     )
+
+    model = AutoModelForSeq2SeqLM.from_pretrained(
+        "google/flan-t5-base"
+    )
+
+    return tokenizer, model
 
 
 generator = load_model()
@@ -72,18 +78,21 @@ def generate_flashcards(text, num_cards):
         {sentence}
         """
 
-        result = generator(
-            prompt,
-            max_length=50
-        )
+        rinputs = tokenizer(
+    prompt,
+    return_tensors="pt",
+    truncation=True
+)
 
-        flashcards.append(
-            {
-                "Question": result[0]["generated_text"],
-                "Answer": sentence
-            }
-        )
+outputs = model.generate(
+    **inputs,
+    max_new_tokens=50
+)
 
+question = tokenizer.decode(
+    outputs[0],
+    skip_special_tokens=True
+)
     return flashcards
 
 
