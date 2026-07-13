@@ -143,7 +143,7 @@ if uploaded_file:
                 text,
                 num_cards
             )
-
+         st.write(cards)
 
         for i, card in enumerate(cards,1):
 
@@ -167,3 +167,4 @@ if uploaded_file:
             st.write(
                 card["Answer"]
             )
+    if st.button("Generate Flashcards"):
