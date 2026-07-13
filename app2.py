@@ -1,110 +1,154 @@
-
+import streamlit as st
 import nltk
 from nltk.tokenize import sent_tokenize
 from PyPDF2 import PdfReader
 from transformers import pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
-import os
 
-def main():
-    # Download NLTK resources if not already present
-    try:
-        nltk.data.find('tokenizers/punkt')
-    except nltk.downloader.DownloadError:
-        nltk.download('punkt')
 
-    try:
-        nltk.data.find('tokenizers/punkt_tab')
-    except nltk.downloader.DownloadError:
-        nltk.download('punkt_tab')
+# Download NLTK data
+@st.cache_resource
+def download_nltk():
+    nltk.download("punkt")
+    nltk.download("punkt_tab")
 
-    # Initialize the text generation pipeline
-    generator = pipeline(
-        "text-generation",
+
+download_nltk()
+
+
+# Load AI model
+@st.cache_resource
+def load_model():
+    return pipeline(
+        "text2text-generation",
         model="google/flan-t5-base"
     )
 
-    # Assume a PDF file named 'sample-local-pdf.pdf' is present in the same directory
-    filename = 'sample-local-pdf.pdf'
 
-    if not os.path.exists(filename):
-        print(f"Error: File '{filename}' not found. Please ensure the PDF file is in the same directory as app.py.")
-        return
+generator = load_model()
 
-    # Read text from PDF
-    reader = PdfReader(filename)
-    text = ""
-    for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text += page_text + "\n"
 
-    if not text.strip():
-        print(f"Error: No text extracted from '{filename}'. Please check the PDF content.")
-        return
+# Extract important sentences
+def extract_important_sentences(text, num_sentences=5):
 
-    # Define helper function to extract important sentences
-    def extract_important_sentences(text, num_sentences=5):
-        sentences = sent_tokenize(text)
-        if not sentences:
-            return []
+    sentences = sent_tokenize(text)
 
-        vectorizer = TfidfVectorizer()
-        tfidf_matrix = vectorizer.fit_transform(sentences)
-        scores = np.asarray(tfidf_matrix.sum(axis=1)).ravel()
-        important_indices = scores.argsort()[-num_sentences:]
-        important_sentences = [
-            sentences[i]
-            for i in important_indices
-        ]
-        return important_sentences
+    if len(sentences) <= num_sentences:
+        return sentences
 
-    # Define main flashcard generation function
-    def generate_flashcards(text, num_cards=5):
-        flashcards = []
-        important_sentences = extract_important_sentences(
-            text,
-            num_cards
+    vectorizer = TfidfVectorizer()
+
+    tfidf_matrix = vectorizer.fit_transform(sentences)
+
+    scores = np.asarray(
+        tfidf_matrix.sum(axis=1)
+    ).ravel()
+
+    important_indices = scores.argsort()[-num_sentences:]
+
+    return [
+        sentences[i]
+        for i in important_indices
+    ]
+
+
+# Generate flashcards
+def generate_flashcards(text, num_cards):
+
+    flashcards = []
+
+    sentences = extract_important_sentences(
+        text,
+        num_cards
+    )
+
+    for sentence in sentences:
+
+        prompt = f"""
+        Generate a clear educational question
+        from this sentence:
+
+        {sentence}
+        """
+
+        result = generator(
+            prompt,
+            max_length=50
         )
 
-        for sentence in important_sentences:
-            prompt = f"""
-            Generate a clear educational question
-            from this sentence:
-
-            {sentence}
-            """
-            result = generator(
-                prompt,
-                max_length=50
-            )
-            question = result[0]["generated_text"]
-
-            flashcards.append({
-                "Question": question,
+        flashcards.append(
+            {
+                "Question": result[0]["generated_text"],
                 "Answer": sentence
-            })
-        return flashcards
+            }
+        )
 
-    # Get number of flashcards from user
-    try:
-        num = int(input("How many flashcards do you want? "))
-    except ValueError:
-        print("Invalid input. Please enter a number.")
-        return
+    return flashcards
 
-    cards = generate_flashcards(text, num)
 
-    # Print flashcards
-    for i, card in enumerate(cards, 1):
-        print(f"\nFlashcard {i}")
-        print("Question:")
-        print(card["Question"])
-        print()
-        print("Answer:")
-        print(card["Answer"])
-        print("-"*50)
 
-if __name__ == "__main__":
-    main()
+# ---------------- STREAMLIT UI ----------------
+
+st.title("🤖 AI Flashcard Generator")
+
+uploaded_file = st.file_uploader(
+    "Upload PDF",
+    type=["pdf"]
+)
+
+
+num_cards = st.slider(
+    "Number of Flashcards",
+    1,
+    20,
+    5
+)
+
+
+if uploaded_file:
+
+    reader = PdfReader(uploaded_file)
+
+    text = ""
+
+    for page in reader.pages:
+
+        page_text = page.extract_text()
+
+        if page_text:
+            text += page_text
+
+
+    if st.button("Generate Flashcards"):
+
+        with st.spinner("Generating flashcards..."):
+
+            cards = generate_flashcards(
+                text,
+                num_cards
+            )
+
+
+        for i, card in enumerate(cards,1):
+
+            st.subheader(
+                f"Flashcard {i}"
+            )
+
+            st.write(
+                "### Question"
+            )
+
+            st.write(
+                card["Question"]
+            )
+
+
+            st.write(
+                "### Answer"
+            )
+
+            st.write(
+                card["Answer"]
+            )
