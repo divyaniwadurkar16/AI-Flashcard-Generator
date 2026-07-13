@@ -1,8 +1,0 @@
-streamlit
-transformers
-torch
-sentencepiece
-nltk
-scikit-learn
-numpy
-PyPDF2
